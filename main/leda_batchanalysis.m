@@ -4,21 +4,21 @@ global leda2
 
 %parse batch-mode arguments and check their validity
 [valid_options, pathname, open_datatype, downsample_factor, smooth_settings, analysis_method, do_optimize, ...
-    export_era_settings, export_scrlist_settings, do_save_overview] = parse_arguments(varargin{:});
+    export_era_settings, export_scrlist_settings,export_eta_settings, do_save_overview] = parse_arguments(varargin{:});
 
 if ~valid_options || ~(downsample_factor > 1 || analysis_method || do_optimize || any(export_era_settings) || any(export_scrlist_settings) || do_save_overview) %invalid option or no option
     disp('No valid operations for Batch-mode defined.')
     return;
 end
 
-dirL = dir(pathname);
-dirL = dirL(~[dirL.isdir]);
+%this is a cell array that contains the list of pathnames to the files to be analyzed.
+dirL  = varargin{1};
 nFile = length(dirL);
 
 add2log(1,['Starting Ledalab batch for ',pathname,' (',num2str(nFile),' file/s)'],1,0,0,1)
-pathname = fileparts(pathname);
+for iFile = 1:nFile
+
 leda2.current.batchmode.file = [];
-leda2.current.batchmode.command.pathname = pathname;
 leda2.current.batchmode.command.datatype = open_datatype;
 leda2.current.batchmode.command.downsample = downsample_factor;
 leda2.current.batchmode.command.smooth = smooth_settings;
@@ -32,12 +32,17 @@ leda2.current.batchmode.version = leda2.intern.version;
 leda2.current.batchmode.settings = leda2.set;
 tic
 
-for iFile = 1:nFile
-    filename = dirL(iFile).name;
+%ledalab is designed to run across different files located in
+%a single folder during batch mode, this is largely incompatible with our
+%data tree.
+    filename = dirL{iFile};
+    [pathname filename ext]= fileparts(filename);
+    filename = [filename ext];
+    %
     leda2.current.batchmode.file(iFile).name = filename;
     disp(' '); add2log(1,['Batch-Analyzing ',filename],1,0,0,1)
     
-    try
+%     try
         %Open
         if strcmp(open_datatype,'leda')
             open_ledafile(0, pathname, filename);
@@ -88,6 +93,21 @@ for iFile = 1:nFile
             export_era('savePeaks')
         end
         
+        %Export ETA
+        if any(export_eta_settings)
+            %right now the temporal window parameters are taken from the era
+            %analysis, in case era analysis is not required, this will give
+            %an error.
+            leda2.set.split.start  = export_era_settings(1);
+            leda2.set.split.end    = export_era_settings(2);            
+            %
+            leda2.set.split.plot     = 0;
+            for variables2split = {'driver' 'tonicDriver' 'phasicData' 'tonicData' 'phasicDriverRaw'}
+                leda2.set.split.variable = variables2split{1};
+                leda_split('split');
+            end            
+        end
+        
         %Export Scrlist
         if any(export_scrlist_settings)
             leda2.set.export.SCRmin = export_scrlist_settings(1);
@@ -105,12 +125,12 @@ for iFile = 1:nFile
         end
         
         if downsample_factor > 0 || analysis_method  || iscell(smooth_settings)
-            save_ledafile(0);
+            save_ledafile([leda2.file.filename(1:end-4) '_results']);
         end
         
-    catch
-        add2log(1,'ERROR !!!',1,0,0,1)
-    end
+%     catch
+%         add2log(1,'ERROR !!!',1,0,0,1)
+%     end
     
 end
 
@@ -121,13 +141,9 @@ save([pathname,filesep,'batchmode_protocol'],'protocol');
 
 
 function [valid_options, wdir, open_datatype, downsample_factor, smooth_settings, analysis_method, do_optimize, ...
-    export_era_settings, export_scrlist_settings, do_save_overview] = parse_arguments(varargin)
+    export_era_settings, export_scrlist_settings, export_eta_settings, do_save_overview] = parse_arguments(varargin)
 
-wdir = varargin{1};
-if ~strcmp(wdir(end),filesep) && ~strcmp(wdir(end-4:end-3),'*.')
-    wdir = [wdir,filesep];
-end
-wdir = [wdir, '*.mat'];
+wdir = [];%we don't have a single working directory so it is empty.
 
 valid_options = 1;
 %default options
@@ -158,7 +174,7 @@ if nargin > 1
             case 'open',
                 %if ischar(option_arg) && any(strcmp(option_arg, valid_datatypeL))
                 open_datatype = option_arg;
-                wdir = wdir(1:end-5);  %remove default value *.mat
+                %wdir = wdir(1:end-5);  %remove default value *.mat
                 %wdir = [wdir(1:end-5), datatype_extL{strcmp(option_arg, valid_datatypeL)}];
                 %else
                 %    disp(['Unknown datatype: ',option_arg])
@@ -218,6 +234,15 @@ if nargin > 1
                     disp('Export requires numeric argument (amp_threshold [filetype]) ')
                     return;
                 end
+            
+            case 'export_eta'
+                if ~isempty(option_arg)
+                    export_eta_settings = option_arg;
+                else
+                    valid_options = 0;
+                    disp('Export requires numeric argument (amp_threshold [filetype]) ')
+                    return;
+                end    
                 
             case 'overview'
                 if isnumeric(option_arg)
@@ -295,7 +320,7 @@ else
 end
 set(l, 'FontSize',8,'Location','NorthEast');
 xlabel('Time [s]'); ylabel('[\muS]')
-
+legend boxoff;
 
 %Driver
 subplot(2,1,2);
@@ -314,7 +339,15 @@ l = legend('Driver', 'Remainder', sprintf('Error-compound = %5.2f',analysis.erro
 set(l, 'FontSize',8,'Location','NorthEast');
 xlabel('Time [s]'); ylabel('[\muS]')
 
-saveas(gcf, leda2.file.filename(1:end-4), 'tif')
+legend boxoff;
+subject_file = leda2.file.filename;
+supertitle(subject_file, 1, 'interpreter','none');
 
+SaveFigure([leda2.file.filename(1:end-4) '.png']);
+
+drawnow;
+pause(0.5)
 close(gcf);
 drawnow;
+
+

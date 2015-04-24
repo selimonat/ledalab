@@ -9,11 +9,8 @@ if ~leda2.file.open
 end
 leda2.file.filename = [leda2.file.filename(1:end-4),'.mat'];
 
-if save_as
-    [filename, pathname] = uiputfile([leda2.file.filename], 'Save file as ..');
-    if all(filename == 0) || all(pathname == 0) %Cancel
-        return
-    end
+if ~isempty(save_as)
+    [pathname filename] = fileparts(save_as);
     leda2.file.filename = filename;
     leda2.file.pathname = pathname;
 else
@@ -28,10 +25,7 @@ fileinfo.version = leda2.intern.version;
 fileinfo.date = clock;
 fileinfo.log = leda2.file.log;
 
-data.conductance = leda2.data.conductance.data;
-data.time = leda2.data.time.data;
-data.timeoff = leda2.data.time.timeoff;
-data.event = leda2.data.events.event;
+data = leda2.data;
 
 savevars = {'fileinfo','data'};
 

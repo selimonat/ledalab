@@ -201,30 +201,32 @@ end
 
 function split
 global leda2
-
+%%
+% name of variable to be processed
+variable        = leda2.set.split.variable;
+target_field    = ['split_' variable ];
+% take all the conditions in a cell...
+[leda2.set.split.selectedconditions i]   = unique({leda2.data.events.event.name},'first');
 % get names of all events
 alleventnames = {leda2.data.events.event.name};
-% get names of selected conditions
-condnames = leda2.set.split.selectedconditions;
+condnames     = leda2.set.split.selectedconditions;
 % number of conditions
-nrcond = numel(condnames);
+nrcond                          = numel(condnames);
+leda2.set.split.condition       = [leda2.data.events.event(i).nid];
+
 % number of instances per condition
 npcond = zeros(1,nrcond);
 for i = 1:nrcond
-    npcond(i) = sum(strcmp(condnames(i), alleventnames));
+    npcond(i) = sum(strcmp(leda2.set.split.selectedconditions{i}, alleventnames));
 end
-
 % convert the event's times (in sec) to sample nr. ...
-etsamplenr = [leda2.data.events.event.time] * ...
-    leda2.data.samplingrate + 1;
-% ... and round (i.e. move) them to the moment of the closest sample
-etsamplenr = round(etsamplenr);
+etsamplenr = round([leda2.data.events.event.time] *leda2.data.samplingrate + 1);
 
 % get FROM and TO and convert to sample number.
 % NOTE: START and END are presumably seconds.
 %       And START is usually negative.
 from = leda2.set.split.start * leda2.data.samplingrate;
-to = leda2.set.split.end * leda2.data.samplingrate;
+to   = leda2.set.split.end * leda2.data.samplingrate;
 % lock them to sampling rate, but move both in same direction!
 if from < to
     if round(from) < from
@@ -236,83 +238,67 @@ if from < to
     end
     from = round(from);
 end
-
-% get the number of data points (i.e. samples) in an epoch
-% NOTE: FROM is included, thus: +1
-nrpts = to - from + 1;
-
-% assign the condition name to the data structure, reserve space, and add
-% the start end end time in points.
-
-%data.split(c) probably could be replaced by analysis.split.condition(c) %%MB
-for c = 1:nrcond
-    leda2.data.split(c).name = condnames{c};
-    leda2.data.split(c).data = zeros(npcond(c), nrpts);
-    leda2.data.split(c).start = from;
-    leda2.data.split(c).end = to;
-end
-
-% get name of variable to be processed
-%   get also 'type': analysis, data, or so?!?
-variable = leda2.set.split.variable;
-
-
-% enable choosing the variable !!!!!!!!!!!
-
-
-% split data of the requested variable
-for c = 1:nrcond
-    i = 1;
-    for j = find(strcmp(condnames(c), alleventnames))
-        leda2.data.split(c).data(i,:) = leda2.analysis.(variable)((etsamplenr(j) + from):(etsamplenr(j) + to));   % FROM is negative!
-        i = i+1;
+%% split data of the requested variable
+i       = 0;
+count   = zeros(1,nrcond);
+for co = 1:nrcond%across conditions    
+    for j = find(strcmp(condnames(co), alleventnames))%across trials
+        i = i + 1;
+        %trials
+        leda2.analysis.(target_field).y(:,i)     = leda2.analysis.(variable)((etsamplenr(j) + from):(etsamplenr(j) + to));   % FROM is negative! 
+        %condition indices
+        leda2.analysis.(target_field).c(:,i)     = co;
+        %
+        count(co)                                = count(co)  + 1;
+        leda2.analysis.(target_field).rank(i)    = count(co);
     end
+    %compute the statistics and store them in an aligned way
+    tc                                       = leda2.analysis.(target_field).y(:,leda2.analysis.(target_field).c == co);
+    leda2.analysis.(target_field).mean(:,co) = mean(  tc,2);
+    leda2.analysis.(target_field).med(:,co)  = median(tc,2);
+    leda2.analysis.(target_field).std(:,co)  = std(   tc,1,2);
+    leda2.analysis.(target_field).sem(:,co)  = leda2.analysis.(target_field).std(:,co)./sqrt(count(co));    
+    leda2.analysis.(target_field).n(:,co)    = count(co);
 end
-
-% compute mean/average
-for c = 1:nrcond
-    leda2.data.split(c).mean = mean(leda2.data.split(c).data, 1);
-end
-
-% compute std. error
-for c = 1:nrcond
-    leda2.data.split(c).stderr = std(leda2.data.split(c).data, 0, 1) / ...
-        sqrt(size(leda2.data.split(c).data, 1));
-end
-
-% add a time vector to the global variable leda2, one for each condition
-time = (from:to)/leda2.data.samplingrate;
-for c = 1:nrcond
-    leda2.data.split(c).time = time;
-end
-
+leda2.analysis.(target_field).cond          = leda2.set.split.condition;
+%time axis
+x                                           = (from:to)/leda2.data.samplingrate;
+leda2.analysis.(target_field).x             = repmat(x(:),1,size(leda2.analysis.(target_field).c,2));
+%
+%%   
 % plot mean and indicate the event for all conditions in one plot
 if ~leda2.intern.batchmode || (leda2.intern.batchmode && leda2.set.split.plot)
     figure;
     hold on
     leg = cell(1,nrcond);   % for the legend
-    yvals = nan(nrcond, numel(leda2.data.split(1).mean));
-    if leda2.set.split.stderr
-        stderrvals = nan(nrcond, numel(leda2.data.split(1).stderr)*2);
-    end
+    yvals = nan(nrcond, numel(leda2.analysis.(['split_' variable]).mean(:,1)));
+%     if leda2.set.split.stderr
+%         stderrvals = nan(nrcond, numel(leda2.analysis.(['split_' variable]).sem(:,1))   );
+%     end
     for c = 1:nrcond        % gather data to plot in one variable
-        leg{c} = sprintf('%s (n = %d)', condnames{c}, npcond(c));
-        yvals(c,:) = leda2.data.split(c).mean;
-        stderrvals(c,:) = [leda2.data.split(c).mean + leda2.data.split(c).stderr, ...
-            leda2.data.split(c).mean(end:-1:1) - leda2.data.split(c).stderr(end:-1:1)];
+        leg{c} = sprintf('%s (n = %d)', condnames{c}, npcond(aligned_ca(c)));
+        yvals(c,:) = leda2.analysis.(['split_' variable]).mean(:,c);
+%         stderrvals(c,:) = [leda2.data.split(c).mean + leda2.data.split(c).stderr, ...
+%             leda2.data.split(c).mean(end:-1:1) - leda2.data.split(c).stderr(end:-1:1)];
     end
+    time = x;
     plt = plot(time,yvals);    % plot it
-    if leda2.set.split.stderr
-        col = get(plt, 'color');
-        for c = 1:nrcond
-            fill([time, time(end:-1:1)], stderrvals(c,:), ...
-                col{c}, 'facealpha', .25, 'edgealpha', .25);
-        end
-    end
+%     if leda2.set.split.stderr
+%         col = get(plt, 'color');
+%         for c = 1:nrcond
+%             fill([time, time(end:-1:1)], stderrvals(c,:), ...
+%                 col{c}, 'facealpha', .25, 'edgealpha', .25);
+%         end
+%     end
     plot([0; 0], get(gca, 'YLim')', 'r--');     % time of the event
     xlabel('time [sec]');
     ylabel(variable);
     legend(leg, 'location', 'best');
+    % %
+    legend boxoff
+    [dummy subject_file] = fileparts(leda2.file.filename);
+    supertitle(subject_file,1,'interpreter','none');    
+    % %
     xlim([leda2.set.split.start, leda2.set.split.end])
     hold off
 end
