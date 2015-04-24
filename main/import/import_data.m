@@ -104,7 +104,7 @@ time = time - timeoffset;
 close_ledafile;
 if leda2.file.open, return; end %closing failed
 
-
+leda2.data = data;
 %Load data
 leda2.data.conductance.data = conductance;
 leda2.data.time.data = time;
@@ -146,11 +146,12 @@ file_changed(1);
 add2log(1,[' Imported ',datatype,'-file ',file,' successfully.'],1,1,1);
 
 refresh_data(0);    %Data statistics
-
+update = 0;
 %Positive SC values?
 if leda2.data.conductance.min < 0 && ~leda2.intern.batchmode
     cmd = questdlg('Data shows negative values. This will complicate the analysis. Do you wish to correct this issue by adding a constant value?','Warning','Yes','No','Yes');
     if strcmp(cmd, 'Yes')
+        update = 1;
         leda2.data.conductance.data = leda2.data.conductance.data - leda2.data.conductance.min + 1;
     end
 end
@@ -159,11 +160,13 @@ end
 if (leda2.data.samplingrate > 32 || leda2.data.N > 36000) && ~leda2.intern.batchmode
     cmd = questdlg('Data is quite large. Do you wish to downsample your data in order to speed up the analysis?','Warning','Yes','No','Yes');
     if strcmp(cmd, 'Yes')
+        update = 1;
         downsample;
     end
 end
-
-refresh_data(0);    %Data statistics
+if update
+    refresh_data(0);    %Data statistics
+end
 
 leda2.current.fileopen_ok = 1;
 if leda2.intern.batchmode
