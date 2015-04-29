@@ -6,7 +6,7 @@ if ~leda2.file.open
     return;
 end
 
-[filename, pathname] = uigetfile({'*.txt';'*.dat'},'Choose a Event-file');
+[filename, pathname] = uigetfile({'*.txt';'*.dat'},'Choose an event-data file');
 
 if all(filename == 0) || all(pathname == 0) %Cancel
     return
@@ -14,12 +14,15 @@ end
 
 
 switch infotype
+    case 'default',
+        event = getevents([pathname, filename]);
     case 'userdef',
         event = getuserdefeventdata([pathname, filename]);
 end
 
 
 if ~isempty(event)
+    leda2.data.events.event = [];
     
     N = length(event);
     event_fields = fieldnames(event);

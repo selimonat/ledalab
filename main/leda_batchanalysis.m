@@ -19,7 +19,9 @@ add2log(1,['Starting Ledalab batch for ',pathname,' (',num2str(nFile),' file/s)'
 for iFile = 1:nFile
 
 leda2.current.batchmode.file = [];
+leda2.current.batchmode.command.pathname = pathname;
 leda2.current.batchmode.command.datatype = open_datatype;
+leda2.current.batchmode.command.filter_settings = filter_settings;
 leda2.current.batchmode.command.downsample = downsample_factor;
 leda2.current.batchmode.command.smooth = smooth_settings;
 leda2.current.batchmode.command.method = analysis_method;
@@ -54,9 +56,14 @@ tic
             continue;
         end
         
+        %Filter, MB: 14.05.2014
+        if filter_settings(1) > 0
+            leda_filter(filter_settings);
+        end
+        
         %Downsample
         if downsample_factor > 1
-            downsample(downsample_factor, 'mean');
+            leda_downsample(downsample_factor, 'mean');  %MB 11.06.2013
         end
         
         %Smooth
@@ -148,6 +155,7 @@ wdir = [];%we don't have a single working directory so it is empty.
 valid_options = 1;
 %default options
 open_datatype = 'leda'; %open
+filter_settings = [0 0];
 downsample_factor = 0;
 smooth_settings = 0;
 analysis_method = 0;
@@ -180,6 +188,15 @@ if nargin > 1
                 %    disp(['Unknown datatype: ',option_arg])
                 %    return;
                 %end
+                
+            case 'filter'
+                if isnumeric(option_arg)
+                    filter_settings = option_arg;
+                else
+                    valid_options = 0;
+                    disp('Filter settings require 2 numeric arguments (filter order, and lower cutoff, e.g. [1 5])')
+                    return;
+                end
                 
             case 'downsample'
                 if isnumeric(option_arg)
