@@ -276,7 +276,7 @@ if ~leda2.intern.batchmode || (leda2.intern.batchmode && leda2.set.split.plot)
 %         stderrvals = nan(nrcond, numel(leda2.analysis.(['split_' variable]).sem(:,1))   );
 %     end
     for c = 1:nrcond        % gather data to plot in one variable
-        leg{c} = sprintf('%s (n = %d)', condnames{c}, npcond(aligned_ca(c)));
+        leg{c} = sprintf('%s (n = %d)', condnames{c}, npcond(c));
         yvals(c,:) = leda2.analysis.(['split_' variable]).mean(:,c);
 %         stderrvals(c,:) = [leda2.data.split(c).mean + leda2.data.split(c).stderr, ...
 %             leda2.data.split(c).mean(end:-1:1) - leda2.data.split(c).stderr(end:-1:1)];
