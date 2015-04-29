@@ -3,7 +3,7 @@ function leda_batchanalysis(varargin)
 global leda2
 
 %parse batch-mode arguments and check their validity
-[valid_options, pathname, open_datatype, downsample_factor, smooth_settings, analysis_method, do_optimize, ...
+[valid_options, pathname, open_datatype, filter_settings, downsample_factor, smooth_settings, analysis_method, do_optimize, ...
     export_era_settings, export_scrlist_settings,export_eta_settings, do_save_overview] = parse_arguments(varargin{:});
 
 if ~valid_options || ~(downsample_factor > 1 || analysis_method || do_optimize || any(export_era_settings) || any(export_scrlist_settings) || do_save_overview) %invalid option or no option
@@ -147,7 +147,7 @@ save([pathname,filesep,'batchmode_protocol'],'protocol');
 
 
 
-function [valid_options, wdir, open_datatype, downsample_factor, smooth_settings, analysis_method, do_optimize, ...
+function [valid_options, wdir, open_datatype, filter_settings, downsample_factor, smooth_settings, analysis_method, do_optimize, ...
     export_era_settings, export_scrlist_settings, export_eta_settings, do_save_overview] = parse_arguments(varargin)
 
 wdir = [];%we don't have a single working directory so it is empty.
