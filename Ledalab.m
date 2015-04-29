@@ -1,6 +1,6 @@
 function Ledalab(varargin)
 
-clc;
+
 close all;
 clear global leda2
 
