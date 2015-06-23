@@ -102,17 +102,19 @@ tic
         
         %Export ETA
         if any(export_eta_settings)
-            %right now the temporal window parameters are taken from the era
-            %analysis, in case era analysis is not required, this will give
-            %an error.
-            leda2.set.split.start  = export_era_settings(1);
-            leda2.set.split.end    = export_era_settings(2);            
-            %
-            leda2.set.split.plot     = 0;
-            for variables2split = {'driver' 'tonicDriver' 'phasicData' 'tonicData' 'phasicDriverRaw'}
-                leda2.set.split.variable = variables2split{1};
-                leda_split('split');
-            end            
+            try
+                %right now the temporal window parameters are taken from the era
+                %analysis, in case era analysis is not required, this will give
+                %an error.
+                leda2.set.split.start  = export_era_settings(1);
+                leda2.set.split.end    = export_era_settings(2);
+                %
+                leda2.set.split.plot     = 0;
+                for variables2split = {'driver' 'tonicDriver' 'phasicData' 'tonicData' 'phasicDriverRaw'}
+                    leda2.set.split.variable = variables2split{1};
+                    leda_split('split');
+                end
+            end
         end
         
         %Export Scrlist
