@@ -102,7 +102,7 @@ tic
         
         %Export ETA
         if any(export_eta_settings)
-            try
+%             try
                 %right now the temporal window parameters are taken from the era
                 %analysis, in case era analysis is not required, this will give
                 %an error.
@@ -114,7 +114,7 @@ tic
                     leda2.set.split.variable = variables2split{1};
                     leda_split('split');
                 end
-            end
+%             end
         end
         
         %Export Scrlist
